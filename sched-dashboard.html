@@ -1,0 +1,1447 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>DJ's EazySched</title>
+  <style>
+    :root{--accent:#3b82f6;--accent-dark:#1e40af;--success:#10b981;--warning:#f59e0b;--danger:#ef4444;--primary-gradient:linear-gradient(135deg, #667eea 0%, #764ba2 100%)}
+    *{box-sizing:border-box;font-family:'Segoe UI','Helvetica Neue',sans-serif}
+    body{margin:0;background:linear-gradient(135deg,#0f172a 0%,#1e293b 50%,#0f172a 100%);color:#1e293b;min-height:100vh}
+    .app{display:flex;min-height:100vh}
+    
+    /* Sidebar with enhanced styling */
+    .sidebar{width:260px;padding:24px;background:linear-gradient(180deg,#1e293b 0%,#0f172a 100%);backdrop-filter:blur(10px);border-right:1px solid rgba(255,255,255,0.1);box-shadow:0 8px 32px rgba(0,0,0,0.3);position:sticky;top:0;height:100vh;overflow-y:auto}
+    .brand{margin:0 0 24px 0;font-size:24px;font-weight:bold;background:var(--primary-gradient);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+    .sidebar nav{display:flex;flex-direction:column;margin-top:12px;gap:8px}
+    .sidebar button{background:none;border:none;padding:12px 16px;text-align:left;border-radius:8px;cursor:pointer;color:#cbd5e1;font-weight:500;transition:all 0.3s ease;position:relative;overflow:hidden}
+    .sidebar button::before{content:'';position:absolute;left:0;top:0;width:3px;height:100%;background:var(--accent);opacity:0;transition:opacity 0.3s}
+    .sidebar button:hover{background:rgba(255,255,255,0.08);color:#f1f5f9;transform:translateX(4px)}
+    .sidebar button.active{background:rgba(59,130,246,0.15);color:#60a5fa;border-left:3px solid var(--accent)}
+    .sidebar button.active::before{opacity:1}
+    
+    /* Main content area */
+    .main{flex:1;padding:32px;background:linear-gradient(135deg,#f8fafc 0%,#f0f4f8 100%);overflow-y:auto}
+    .section{display:none;animation:fadeIn 0.3s ease}
+    .section.active{display:block}
+    @keyframes fadeIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+    
+    /* Glass panels with modern styling */
+    .glass-panel{background:linear-gradient(135deg,rgba(255,255,255,0.95) 0%,rgba(255,255,255,0.85) 100%);padding:20px;border-radius:12px;box-shadow:0 8px 32px rgba(12,38,89,0.08),0 2px 8px rgba(12,38,89,0.04);border:1px solid rgba(255,255,255,0.5);margin-bottom:16px;backdrop-filter:blur(10px);transition:all 0.3s ease}
+    .glass-panel:hover{box-shadow:0 12px 40px rgba(12,38,89,0.12);transform:translateY(-2px)}
+    
+    /* KPI Cards */
+    .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px;margin-bottom:24px}
+    .kpi{background:linear-gradient(135deg,#fff 0%,#f8fafc 100%);padding:20px;border-radius:12px;box-shadow:0 4px 16px rgba(12,38,89,0.08);border:1px solid rgba(59,130,246,0.1);transition:all 0.3s ease;position:relative;overflow:hidden}
+    .kpi::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:var(--primary-gradient)}
+    .kpi:hover{transform:translateY(-4px);box-shadow:0 8px 24px rgba(12,38,89,0.12)}
+    .kpi strong{display:block;font-size:13px;color:#64748b;margin-bottom:8px;text-transform:uppercase;letter-spacing:0.5px}
+    .kpi span{display:block;font-size:32px;font-weight:bold;background:var(--primary-gradient);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+    
+    /* Tables */
+    .schedule-container{overflow:auto;border-radius:12px;margin-top:16px}
+    .simple-table,.schedule{width:100%;border-collapse:collapse}
+    .schedule{background:white;border-radius:8px;overflow:hidden;box-shadow:0 4px 12px rgba(0,0,0,0.05)}
+    .simple-table th,.schedule th{background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);color:white;padding:14px;font-weight:600;text-align:left;letter-spacing:0.5px}
+    .simple-table td,.schedule td{padding:12px 14px;border-bottom:1px solid #f0f4f8;transition:background 0.2s}
+    .schedule tbody tr:hover{background:#f8f9ff}
+    .schedule tbody tr:hover td{background:rgba(59,130,246,0.02)}
+    .employee-schedule-title{margin:18px 0 10px 0;font-size:14px;color:#334155;font-weight:700;letter-spacing:0.3px;text-transform:uppercase}
+    .employee-schedule{width:100%;border-collapse:collapse;background:white;border-radius:8px;overflow:hidden;box-shadow:0 4px 12px rgba(0,0,0,0.05)}
+    .employee-schedule th{background:linear-gradient(135deg,#334155 0%,#475569 100%);color:white;padding:10px 12px;font-size:12px;font-weight:700;text-align:left;letter-spacing:0.4px}
+    .employee-schedule td{padding:10px 12px;border-bottom:1px solid #eef2f7;font-size:13px;color:#1e293b;vertical-align:top}
+    .employee-schedule tbody tr:nth-child(even){background:#f8fafc}
+    .employee-schedule-empty{padding:14px;color:#64748b;font-size:13px;background:rgba(255,255,255,0.8);border:1px dashed #cbd5e1;border-radius:8px}
+    
+    /* Cell styling */
+    .cell-fixed{background:linear-gradient(135deg,#dbeafe 0%,#e0e7ff 100%);font-weight:500;color:#1e40af;border-radius:4px}
+    .cell-alert{background:linear-gradient(135deg,#fee2e2 0%,#fef2f2 100%);color:#991b1b;border-left:3px solid #ef4444}
+    .cell-floor{background:linear-gradient(135deg,#dcfce7 0%,#f0fdf4 100%);color:#166534;border-left:3px solid #10b981}
+    .cell-emp{cursor:pointer;transition:all 0.2s;padding:6px 8px;border-radius:4px}
+    .cell-emp:hover{background:rgba(59,130,246,0.1);transform:scale(1.05)}
+    .cell-emp.swap-selected{background:rgba(16,185,129,0.2);outline:2px solid #10b981;transform:scale(1.02)}
+    .cell-emp-name{font-weight:600}
+    .cell-shift-time{font-size:11px;color:#475569;margin-top:2px;cursor:pointer;padding:2px 6px;border-radius:999px;display:inline-block;background:rgba(59,130,246,0.08)}
+    .cell-shift-time:hover{background:rgba(59,130,246,0.2);color:#1e40af}
+    
+    /* Modal */
+    .modal{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.5);backdrop-filter:blur(4px);z-index:1000}
+    .modal.hidden{display:none}
+    .modal-inner{background:white;padding:24px;border-radius:12px;width:450px;box-shadow:0 20px 60px rgba(0,0,0,0.2);animation:slideUp 0.3s ease}
+    @keyframes slideUp{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
+    .modal-inner h3{margin:0 0 16px 0;font-size:18px;color:#1e293b}
+    .modal label{display:block;margin:12px 0 6px 0;color:#475569;font-weight:500}
+    .modal input,.modal select{width:100%;padding:10px;border:1px solid #e2e8f0;border-radius:6px;font-size:14px;margin-bottom:12px;transition:border-color 0.3s}
+    .modal input:focus,.modal select:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px rgba(59,130,246,0.1)}
+    .modal-actions{display:flex;gap:8px;justify-content:flex-end;margin-top:20px}
+    
+    /* Buttons */
+    .btn-small{padding:8px 14px;border-radius:6px;border:1px solid #e2e8f0;background:white;cursor:pointer;color:#475569;font-weight:500;transition:all 0.3s;font-size:13px}
+    .btn-small:hover{background:var(--accent);color:white;border-color:var(--accent);transform:translateY(-1px);box-shadow:0 4px 12px rgba(59,130,246,0.3)}
+    .btn-remove-selected{background:rgba(239,68,68,0.08);color:#991b1b;border-color:rgba(239,68,68,0.35)}
+    .btn-remove-selected:hover{background:linear-gradient(135deg,#ef4444 0%,#b91c1c 100%);border-color:#ef4444;color:white;box-shadow:0 8px 20px rgba(239,68,68,0.35)}
+    .btn-primary{background:var(--primary-gradient);color:white;border:none}
+    .btn-primary:hover{transform:translateY(-2px);box-shadow:0 8px 20px rgba(102,126,234,0.4)}
+    .export{margin-left:8px;background:linear-gradient(135deg,#10b981 0%,#059669 100%);color:white;border:none}
+    .export:hover{transform:translateY(-2px);box-shadow:0 8px 20px rgba(16,185,129,0.4)}
+    
+    /* Controls */
+    .controls{margin:16px 0;display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+    .controls label{color:#475569;font-weight:500;display:flex;align-items:center;gap:8px}
+    .controls input{padding:8px 12px;border:1px solid #e2e8f0;border-radius:6px;transition:border-color 0.3s}
+    .controls input:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px rgba(59,130,246,0.1)}
+    
+    /* Day selector */
+    .day-selector{margin-top:12px;display:flex;gap:8px;flex-wrap:wrap;padding:12px;background:rgba(59,130,246,0.05);border-radius:8px}
+    .day-selector label{display:flex;align-items:center;gap:6px;font-size:13px;color:#1e293b;cursor:pointer;padding:6px;border-radius:4px;transition:all 0.2s}
+    .day-selector label:hover{background:rgba(59,130,246,0.1)}
+    .day-selector input{cursor:pointer;width:18px;height:18px;accent-color:var(--accent)}
+    
+    /* Inline edits */
+    .inline-edit-quals,.inline-edit-daysoff,.inline-edit-vacation,.inline-edit-fixed{width:100%;padding:8px;border:1px solid #e2e8f0;border-radius:6px;font-size:13px;transition:border-color 0.3s}
+    .inline-edit-quals:focus,.inline-edit-daysoff:focus,.inline-edit-vacation:focus,.inline-edit-fixed:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px rgba(59,130,246,0.1)}
+    .days-off-list{margin-top:6px;display:flex;flex-wrap:wrap;gap:6px}
+    .days-off-chip{display:inline-flex;align-items:center;gap:6px;background:rgba(59,130,246,0.1);color:#1e293b;padding:4px 8px;border-radius:999px;font-size:12px}
+    .days-off-remove{border:none;background:#1e40af;color:#fff;border-radius:999px;width:16px;height:16px;line-height:16px;font-size:11px;cursor:pointer;padding:0}
+    .days-off-remove:hover{background:#1e3a8a}
+    .days-off-empty{color:#94a3b8;font-size:12px}
+    
+    /* Home overview enhancements */
+    .home-top{margin-bottom:24px}
+    .home-top h2{margin:0 0 16px 0;font-size:28px;color:#1e293b;font-weight:600}
+    
+    /* Employee card styling */
+    .employee-card{padding:12px;background:linear-gradient(135deg,rgba(59,130,246,0.05),rgba(99,102,241,0.05));border-radius:8px;margin-bottom:8px;border-left:4px solid var(--accent);transition:all 0.3s}
+    .employee-card:hover{background:linear-gradient(135deg,rgba(59,130,246,0.1),rgba(99,102,241,0.1));transform:translateX(4px)}
+    .employee-card strong{color:#1e293b;display:block}
+    
+    /* Area staffing card */
+    .area-card{padding:12px;border-radius:8px;margin-bottom:10px;border-left:4px solid;transition:all 0.3s}
+    .area-card strong{display:block;color:#1e293b;margin-bottom:4px;font-size:14px}
+    .area-card:hover{transform:translateX(4px)}
+    
+    /* Status indicators */
+    .status-badge{display:inline-block;padding:4px 8px;border-radius:4px;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.5px}
+    .status-filled{background:#d1fae5;color:#065f46}
+    .status-partial{background:#fed7aa;color:#92400e}
+    .status-empty{background:#fee2e2;color:#991b1b}
+    .swap-badge{display:inline-flex;align-items:center;gap:6px;padding:6px 10px;border-radius:999px;background:rgba(239,68,68,0.1);color:#991b1b;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:0.6px}
+    .swap-badge::before{content:'⚠️';font-size:12px}
+    .swap-badge.hidden{display:none}
+    
+    /* Advanced animations */
+    @keyframes slideDown{from{opacity:0;transform:translateY(-10px)}to{opacity:1;transform:translateY(0)}}
+    @keyframes pulse{0%,100%{opacity:1}50%{opacity:0.5}}
+    @keyframes shimmer{0%{background-position:200% center}100%{background-position:-200% center}}
+    @keyframes float{0%,100%{transform:translateY(0px)}50%{transform:translateY(-8px)}}
+    @keyframes rotate{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
+    
+    /* Section dividers with gradient */
+    .section-divider{display:flex;align-items:center;gap:12px;margin:24px 0;opacity:0.6}
+    .section-divider::before,.section-divider::after{content:'';flex:1;height:1px;background:linear-gradient(90deg,transparent,#64748b,transparent)}
+    .section-divider span{font-size:12px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:1px}
+    
+    /* Floating action button style */
+    .fab{position:fixed;bottom:32px;right:32px;width:56px;height:56px;background:var(--primary-gradient);border-radius:50%;border:none;color:white;font-size:24px;cursor:pointer;box-shadow:0 8px 24px rgba(102,126,234,0.4);transition:all 0.3s ease;z-index:100}
+    .fab:hover{transform:scale(1.1);box-shadow:0 12px 32px rgba(102,126,234,0.6)}
+    .fab:active{transform:scale(0.95)}
+    
+    /* Enhanced tooltips */
+    [data-tooltip]{position:relative}
+    [data-tooltip]:hover::after{content:attr(data-tooltip);position:absolute;bottom:100%;left:50%;transform:translateX(-50%);background:#1e293b;color:white;padding:6px 12px;border-radius:6px;font-size:12px;white-space:nowrap;margin-bottom:8px;z-index:1000;box-shadow:0 4px 12px rgba(0,0,0,0.3)}
+    [data-tooltip]:hover::before{content:'';position:absolute;bottom:calc(100% - 4px);left:50%;transform:translateX(-50%);border:4px solid transparent;border-top-color:#1e293b;z-index:1000}
+    
+    /* Avatar badges for employees */
+    .avatar{display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;border-radius:50%;background:var(--primary-gradient);color:white;font-weight:bold;font-size:14px;margin-right:8px}
+    
+    /* Capacity gauge visualization */
+    .capacity-gauge{display:flex;gap:4px;margin-top:8px}
+    .gauge-dot{width:8px;height:8px;border-radius:50%;background:#e2e8f0;transition:all 0.3s}
+    .gauge-dot.filled{background:linear-gradient(135deg,#667eea 0%,#764ba2 100%)}
+    
+    /* Staffing heatmap colors */
+    .heat-cold{background:rgba(239,68,68,0.1)!important;color:#991b1b}
+    .heat-cool{background:rgba(245,158,11,0.1)!important;color:#92400e}
+    .heat-warm{background:rgba(34,197,94,0.1)!important;color:#166534}
+    .heat-hot{background:rgba(16,185,129,0.1)!important;color:#065f46}
+    
+    /* Smooth scroll and selection */
+    html{scroll-behavior:smooth}
+    ::selection{background:var(--accent);color:white}
+    
+    /* Enhanced list animations */
+    .stagger-list>div{animation:slideDown 0.4s ease forwards;opacity:0}
+    .stagger-list>div:nth-child(1){animation-delay:0.05s}
+    .stagger-list>div:nth-child(2){animation-delay:0.1s}
+    .stagger-list>div:nth-child(3){animation-delay:0.15s}
+    .stagger-list>div:nth-child(4){animation-delay:0.2s}
+    .stagger-list>div:nth-child(5){animation-delay:0.25s}
+    
+    /* Interactive card states */
+    .interactive-card{cursor:pointer;position:relative;overflow:hidden}
+    .interactive-card::after{content:'';position:absolute;top:50%;left:50%;width:0;height:0;background:rgba(255,255,255,0.3);border-radius:50%;transform:translate(-50%,-50%);transition:width 0.6s,height 0.6s}
+    .interactive-card:active::after{width:300px;height:300px}
+    
+    /* Enhanced empty state */
+    .empty-state{text-align:center;padding:48px 24px;color:#64748b}
+    .empty-state-icon{font-size:64px;margin-bottom:16px}
+    .empty-state h3{margin:0 0 8px 0;color:#1e293b;font-size:18px}
+    .empty-state p{margin:0;font-size:14px}
+    
+    /* Loading skeleton */
+    .skeleton{background:linear-gradient(90deg,#f0f4f8 25%,#e2e8f0 50%,#f0f4f8 75%);background-size:200% 100%;animation:shimmer 2s infinite}
+    
+    /* Badge animations */
+    .badge-pulse{animation:pulse 2s ease-in-out infinite}
+    
+    /* Section headers with icons */
+    h2{display:flex;align-items:center;gap:12px;margin-bottom:20px}
+    h2::before{content:'';width:4px;height:28px;background:var(--primary-gradient);border-radius:2px}
+    
+    /* Better shadows for depth */
+    .shadow-sm{box-shadow:0 1px 2px rgba(0,0,0,0.05)}
+    .shadow-md{box-shadow:0 4px 6px rgba(0,0,0,0.07)}
+    .shadow-lg{box-shadow:0 10px 15px rgba(0,0,0,0.1)}
+    .shadow-xl{box-shadow:0 20px 25px rgba(0,0,0,0.15)}
+  </style>
+</head>
+<body>
+  <div class="app">
+    <aside class="sidebar">
+      <h1 class="brand">DJ's EazySched</h1>
+      <nav>
+        <button data-section="home" class="active">Home</button>
+        <button data-section="this-week">This Week</button>
+        <button data-section="next-week">Next Week</button>
+        <button data-section="employees">Employees</button>
+      </nav>
+    </aside>
+
+    <main class="main">
+      <section id="home" class="section active">
+        <div class="home-top">
+          <h2>Today's Overview</h2>
+          <div class="kpis">
+            <div class="kpi"><span id="kpi-filled-label">Areas filled:</span> <span id="kpi-filled">-</span></div>
+            <div class="kpi"><span id="kpi-short-label">Employee short:</span> <span id="kpi-short">0</span></div>
+            <div class="kpi">Employees scheduled: <span id="kpi-emps">0</span></div>
+          </div>
+        </div>
+        <div id="today-overview" class="glass-panel">No schedule yet. Generate schedules to populate overview.</div>
+      </section>
+
+      <section id="this-week" class="section">
+        <h2>This Week</h2>
+        <div class="controls"><label>Week start (Mon): <input id="this-week-start" type="date"></label></div>
+        <div class="day-selector" id="this-week-days">
+          <label><input type="checkbox" data-day="0" checked> Mon</label>
+          <label><input type="checkbox" data-day="1" checked> Tue</label>
+          <label><input type="checkbox" data-day="2" checked> Wed</label>
+          <label><input type="checkbox" data-day="3" checked> Thu</label>
+          <label><input type="checkbox" data-day="4" checked> Fri</label>
+          <label><input type="checkbox" data-day="5"> Sat</label>
+          <label><input type="checkbox" data-day="6"> Sun</label>
+        </div>
+        <div id="this-week-panel" class="glass-panel schedule-container"></div>
+        <div id="this-week-employee-schedule" class="glass-panel schedule-container"></div>
+        <div class="controls"><button id="gen-this-week" class="btn-small">Generate Schedule</button>
+        <button id="clear-this-week" class="btn-small">Clear Schedule</button>
+        <button id="manual-swap-this-week" class="btn-small" data-week="this-week">Manual Swap</button>
+        <button id="remove-selected-this-week" class="btn-small btn-remove-selected" data-week="this-week">Remove Selected</button>
+        <span id="swap-badge-this-week" class="swap-badge hidden">Override Mode</span>
+        <button data-export="this-week" class="btn-small export">Export CSV</button>
+        <button data-print="this-week" class="btn-small">Print</button></div>
+      </section>
+
+      <section id="next-week" class="section">
+        <h2>Next Week</h2>
+        <div class="controls"><label>Week start (Mon): <input id="next-week-start" type="date"></label></div>
+        <div class="day-selector" id="next-week-days">
+          <label><input type="checkbox" data-day="0" checked> Mon</label>
+          <label><input type="checkbox" data-day="1" checked> Tue</label>
+          <label><input type="checkbox" data-day="2" checked> Wed</label>
+          <label><input type="checkbox" data-day="3" checked> Thu</label>
+          <label><input type="checkbox" data-day="4" checked> Fri</label>
+          <label><input type="checkbox" data-day="5"> Sat</label>
+          <label><input type="checkbox" data-day="6"> Sun</label>
+        </div>
+        <div id="next-week-panel" class="glass-panel schedule-container"></div>
+        <div id="next-week-employee-schedule" class="glass-panel schedule-container"></div>
+        <div class="controls"><button id="gen-next-week" class="btn-small">Generate Schedule</button>
+        <button id="clear-next-week" class="btn-small">Clear Schedule</button>
+        <button id="manual-swap-next-week" class="btn-small" data-week="next-week">Manual Swap</button>
+        <button id="remove-selected-next-week" class="btn-small btn-remove-selected" data-week="next-week">Remove Selected</button>
+        <span id="swap-badge-next-week" class="swap-badge hidden">Override Mode</span>
+        <button data-export="next-week" class="btn-small export">Export CSV</button>
+        <button data-print="next-week" class="btn-small">Print</button></div>
+      </section>
+
+      <section id="employees" class="section">
+        <h2>Employees</h2>
+        <div class="glass-panel">
+          <button id="add-employee" class="btn-small">Add Employee</button>
+          <table id="employees-table" class="simple-table"><thead><tr><th>Name</th><th>Qualifications</th><th>Fixed Area</th><th>Days Off</th><th>Vacation</th><th></th></tr></thead><tbody></tbody></table>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <div id="modal" class="modal hidden">
+    <div class="modal-inner">
+      <h3 id="modal-title">Employee</h3>
+      <form id="modal-form">
+        <input type="hidden" name="id">
+        <label>Name: <input name="name"></label>
+        <label>Qualifications (comma separated): <input name="quals"></label>
+        <label>Fixed area (optional): <input name="fixed"></label>
+        <label>Days off dates (YYYY-MM-DD, comma separated): <input name="daysOff"></label>
+        <label>Vacation (YYYY-MM-DD, comma separated): <input name="vacation"></label>
+        <div class="modal-actions"><button type="submit" class="btn-small">Save</button><button type="button" id="cancel-modal" class="btn-small">Cancel</button></div>
+      </form>
+    </div>
+  </div>
+
+  <script>
+  // In-memory data & helpers
+  const SCHED = {
+    areas: [ {id:'H-mixer', max:1}, {id:'Button', max:1}, {id:'Buggies', max:1}, {id:'Floor', max:4}, {id:'Cleaning', max:1}, {id:'Spice', max:1}, {id:'Forklift', max:1}, {id:'Dock', max:1}, {id:'Maintainer', max:1} ],
+    employees: [
+      {id:1,name:'Tracy',quals:['H-mixer','Button','Buggies','Floor','Cleaning','Spice','Forklift','Dock'],fixed:null,daysOff:[],vacation:[]},
+      {id:2,name:'DJ',quals:['H-mixer','Button','Buggies','Floor','Cleaning','Spice'],fixed:null,daysOff:[],vacation:[]},
+      {id:3,name:'Carlos',quals:['H-mixer','Button','Buggies','Floor','Forklift','Cleaning','Spice'],fixed:null,daysOff:[],vacation:[]},
+      {id:4,name:'Kody',quals:['H-mixer','Button','Buggies','Floor','Cleaning','Spice','Forklift','Dock'],fixed:null,daysOff:[],vacation:[]},
+      {id:5,name:'Yuniel',quals:['H-mixer','Button','Buggies','Floor','Cleaning','Forklift','Spice'],fixed:null,daysOff:[],vacation:[]},
+      {id:6,name:'Tracie',quals:['H-mixer','Button','Buggies','Floor','Cleaning','Spice'],fixed:null,daysOff:[],vacation:[]},
+      {id:7,name:'Angela',quals:['H-mixer','Button','Buggies','Floor','Cleaning','Forklift','Spice'],fixed:null,daysOff:[],vacation:[]},
+      {id:8,name:'Ismelda',quals:['Button','Cleaning'],fixed:null,daysOff:[],vacation:[]},
+      {id:9,name:'Chinh',quals:['Button','Floor','Spice'],fixed:null,daysOff:[],vacation:[]},
+      {id:10,name:'Eddie',quals:['Button','Buggies','Floor','Cleaning','Dock'],fixed:null,daysOff:[],vacation:[]},
+      {id:11,name:'Rosdlin',quals:['Button','Floor','Spice','Buggies','Cleaning'],fixed:null,daysOff:[],vacation:[]}
+    ]
+  };
+
+  // localStorage helpers
+  function saveEmployees(){ localStorage.setItem('sched_employees', JSON.stringify(SCHED.employees)); }
+  function loadEmployees(){ const stored=localStorage.getItem('sched_employees'); if(stored) SCHED.employees=JSON.parse(stored); }
+  function saveWorkingDays(section, days){ localStorage.setItem(`sched_working_days_${section}`, JSON.stringify(days)); }
+  function loadWorkingDays(section){ const stored=localStorage.getItem(`sched_working_days_${section}`); return stored ? JSON.parse(stored) : null; }
+  
+  // Save and load schedules
+  function saveSchedules(){
+    if(lastThisWeek) localStorage.setItem('sched_last_this_week', JSON.stringify(lastThisWeek));
+    if(lastNextWeek) localStorage.setItem('sched_last_next_week', JSON.stringify(lastNextWeek));
+  }
+  function loadSchedules(){
+    const reviveWeek = (week)=>{
+      if(!week) return null;
+      if(week.start) week.start = new Date(week.start);
+      if(Array.isArray(week.days)) week.days = week.days.map(d=>new Date(d));
+      return week;
+    };
+    const thisWeekData = localStorage.getItem('sched_last_this_week');
+    const nextWeekData = localStorage.getItem('sched_last_next_week');
+    if(thisWeekData) lastThisWeek = reviveWeek(JSON.parse(thisWeekData));
+    if(nextWeekData) lastNextWeek = reviveWeek(JSON.parse(nextWeekData));
+  }
+
+  function getWeekStart(date){ const d=new Date(date); const day=d.getDay(); const diff=(day+6)%7; d.setDate(d.getDate()-diff); d.setHours(0,0,0,0); return d; }
+  function formatDate(d){ const y=d.getFullYear(),m=('0'+(d.getMonth()+1)).slice(-2),day=('0'+d.getDate()).slice(-2); return `${y}-${m}-${day}`; }
+  function addDays(d,n){ const x=new Date(d); x.setDate(x.getDate()+n); return x; }
+  function getDefaultShiftTime(areaId){ return areaId==='Dock' ? '2:00 PM - 11:30 PM' : '1:30 PM - 11:30 PM'; }
+  function ensureWeekShiftTimes(week){
+    if(!week || !week.schedule) return;
+    if(!week.shiftTimes || typeof week.shiftTimes!=='object') week.shiftTimes = {};
+    for(const area of SCHED.areas){
+      if(!week.shiftTimes[area.id]) week.shiftTimes[area.id] = Array.from({length:7},()=>({}));
+      for(let i=0;i<7;i++){
+        if(!week.shiftTimes[area.id][i] || typeof week.shiftTimes[area.id][i] !== 'object') week.shiftTimes[area.id][i] = {};
+        const slot = week.shiftTimes[area.id][i];
+        const assigned = week.schedule[area.id][i] || [];
+        assigned.forEach(empId=>{
+          if(!slot[empId]) slot[empId] = getDefaultShiftTime(area.id);
+        });
+      }
+    }
+  }
+  function getAssignmentShiftTime(week, areaId, dayIndex, empId){
+    ensureWeekShiftTimes(week);
+    const slot = week.shiftTimes[areaId] && week.shiftTimes[areaId][dayIndex];
+    return (slot && slot[empId]) ? slot[empId] : getDefaultShiftTime(areaId);
+  }
+  function parseShiftRange(shiftText){
+    const text = String(shiftText || '').trim();
+    if(!text) return {start:'-', end:'-'};
+    const parts = text.split(' - ');
+    if(parts.length >= 2) return {start:parts[0].trim() || '-', end:parts.slice(1).join(' - ').trim() || '-'};
+    return {start:text, end:'-'};
+  }
+  function isEmployeeOff(emp, day, dayStr){
+    if(!emp.daysOff || emp.daysOff.length===0) return false;
+    return emp.daysOff.some(d=>(typeof d==='number' && d===day.getDay()) || (typeof d==='string' && d===dayStr));
+  }
+
+  // Helper: check if an employee is eligible for a specific slot
+  function isEligible(emp, areaId, dayIndex, days, workingDays, schedule, fixedEmployees){
+    if(fixedEmployees.has(emp.id)) return false;
+    const day = days[dayIndex];
+    const dayStr = formatDate(day);
+    if(isEmployeeOff(emp, day, dayStr)) return false;
+    if(emp.vacation.includes(dayStr)) return false;
+    if(!emp.quals.includes(areaId)) return false;
+    // already assigned this day to another area
+    for(const a of SCHED.areas){
+      const val = schedule[a.id] && schedule[a.id][dayIndex];
+      if(val && val.includes(emp.id)) return false;
+    }
+    // prevent consecutive same-area unless area is Floor
+    if(areaId !== 'Floor'){
+      for(let prevDay=dayIndex-1;prevDay>=0;prevDay--){
+        if(workingDays.includes(prevDay)){
+          const val = schedule[areaId][prevDay];
+          if(val && val.includes(emp.id)) return false;
+          break;
+        }
+      }
+      for(let nextDay=dayIndex+1;nextDay<7;nextDay++){
+        if(workingDays.includes(nextDay)){
+          const val = schedule[areaId][nextDay];
+          if(val && val.includes(emp.id)) return false;
+          break;
+        }
+      }
+    }
+    return true;
+  }
+
+  // Recursive backtracking to exhaustively fill schedule
+  function backtrackFill(dayIndex, areaIndex, schedule, workingDays, days, fixedEmployees, empAssignments){
+    // If all slots processed, success
+    if(dayIndex === 7) return true;
+    
+    // Skip non-working days
+    if(!workingDays.includes(dayIndex)) return backtrackFill(dayIndex+1, 0, schedule, workingDays, days, fixedEmployees, empAssignments);
+    
+    // Move to next day when all areas processed
+    if(areaIndex === SCHED.areas.length) return backtrackFill(dayIndex+1, 0, schedule, workingDays, days, fixedEmployees, empAssignments);
+    
+    const area = SCHED.areas[areaIndex];
+    const assignedList = schedule[area.id][dayIndex] || [];
+    const capacity = area.max - assignedList.length;
+    
+    // If capacity filled for this area, move to next area
+    if(capacity <= 0) return backtrackFill(dayIndex, areaIndex+1, schedule, workingDays, days, fixedEmployees, empAssignments);
+    
+    // Get eligible employees for this slot
+    const eligible = SCHED.employees.filter(emp=>isEligible(emp, area.id, dayIndex, days, workingDays, schedule, fixedEmployees));
+    
+    // Sort by fairness (fewest assignments), then by flexibility (most quals)
+    eligible.sort((a,b)=>{
+      const aCount = empAssignments[a.id];
+      const bCount = empAssignments[b.id];
+      if(aCount !== bCount) return aCount - bCount;
+      return b.quals.length - a.quals.length;
+    });
+    
+    // Shuffle for randomization
+    for(let i=eligible.length-1;i>0;i--){
+      const j = Math.floor(Math.random()*(i+1));
+      [eligible[i], eligible[j]] = [eligible[j], eligible[i]];
+    }
+    
+    // Try each eligible employee recursively
+    for(const emp of eligible){
+      // Assign employee
+      if(!schedule[area.id][dayIndex]) schedule[area.id][dayIndex] = [];
+      schedule[area.id][dayIndex].push(emp.id);
+      empAssignments[emp.id]++;
+      
+      // Recursively fill remaining slots
+      if(backtrackFill(dayIndex, areaIndex, schedule, workingDays, days, fixedEmployees, empAssignments)) return true;
+      
+      // Backtrack if recursive call failed
+      schedule[area.id][dayIndex].pop();
+      empAssignments[emp.id]--;
+    }
+    
+    // If no employee worked, try skipping this slot (only if not mandatory)
+    return backtrackFill(dayIndex, areaIndex+1, schedule, workingDays, days, fixedEmployees, empAssignments);
+  }
+
+  // Calculate schedule quality score (lower is better: fewer unfilled slots, better fairness)
+  function calculateScheduleQuality(schedule, empAssignments, workingDays, days, fixedEmployees){
+    let score = 0;
+    
+    // Penalty for unfilled slots
+    for(const area of SCHED.areas){
+      for(let i=0;i<7;i++){
+        if(!workingDays.includes(i)) continue;
+        const assigned = schedule[area.id][i] ? schedule[area.id][i].length : 0;
+        const unfilled = area.max - assigned;
+        score += unfilled * 100; // Heavy penalty for each unfilled slot
+      }
+    }
+    
+    // Penalty for unfair area distribution: when one employee has multiple assignments in same area 
+    // while other qualified employees have zero in that area
+    for(const area of SCHED.areas){
+      const qualifiedEmps = SCHED.employees.filter(e=>!fixedEmployees.has(e.id) && e.quals.includes(area.id));
+      const areaAssignments = {}; // {empId: count}
+      
+      for(let i=0;i<7;i++){
+        const assigned = schedule[area.id][i] || [];
+        assigned.forEach(empId=>{
+          areaAssignments[empId] = (areaAssignments[empId] || 0) + 1;
+        });
+      }
+      
+      // Check for imbalance: one employee with 2+ while others have 0
+      const counts = Object.values(areaAssignments);
+      const maxCount = Math.max(...counts, 0);
+      const zeroCount = qualifiedEmps.filter(e=>!(e.id in areaAssignments)).length;
+      
+      if(maxCount >= 2 && zeroCount > 0){
+        score += maxCount * zeroCount * 50; // Heavy penalty for uneven distribution
+      }
+    }
+    
+    // Fairness across total assignments (lower variance = better)
+    const assignments = Object.values(empAssignments);
+    const avgAssignments = assignments.reduce((a,b)=>a+b,0) / assignments.length;
+    const variance = assignments.reduce((sum,val)=>sum + Math.pow(val-avgAssignments,2),0) / assignments.length;
+    score += variance * 10;
+    
+    return score;
+  }
+
+  // Deep clone schedule for multi-pass optimization
+  function cloneSchedule(schedule){
+    const cloned = {};
+    for(const area of SCHED.areas){
+      cloned[area.id] = schedule[area.id].map(slot=>slot ? [...slot] : null);
+    }
+    return cloned;
+  }
+
+  // Optimization pass: try to find beneficial swaps and improve fairness
+  function optimizationPass(schedule, workingDays, days, fixedEmployees, empAssignments){
+    let improved = false;
+    
+    // FIRST PRIORITY: Fix area fairness imbalances (same employee multiple times, qualified colleague zero)
+    for(const area of SCHED.areas){
+      const qualifiedEmps = SCHED.employees.filter(e=>!fixedEmployees.has(e.id) && e.quals.includes(area.id));
+      if(qualifiedEmps.length < 2) continue; // Need at least 2 qualified employees for fairness check
+      
+      const areaAssignments = {}; // {empId: [dayIndexes]}
+      for(let i=0;i<7;i++){
+        const assigned = schedule[area.id][i] || [];
+        assigned.forEach(empId=>{
+          if(!areaAssignments[empId]) areaAssignments[empId] = [];
+          areaAssignments[empId].push(i);
+        });
+      }
+      
+      // Find employees with multiple assignments in this area
+      for(const empId of Object.keys(areaAssignments)){
+        if(fixedEmployees.has(parseInt(empId))) continue;
+        if(areaAssignments[empId].length < 2) continue; // Not duplicated
+        
+        // Find a qualified employee with zero assignments in this area
+        const underutilized = qualifiedEmps.find(e=>!areaAssignments[e.id] && !fixedEmployees.has(e.id));
+        if(!underutilized) continue;
+        
+        // Try to swap one of this employee's slots with the underutilized employee
+        const dayToSwap = areaAssignments[empId][0];
+        if(isEligible(underutilized, area.id, dayToSwap, days, workingDays, schedule, fixedEmployees)){
+          const slot = schedule[area.id][dayToSwap];
+          const idx = slot.indexOf(parseInt(empId));
+          slot[idx] = underutilized.id;
+          
+          empAssignments[parseInt(empId)]--;
+          empAssignments[underutilized.id]++;
+          improved = true;
+        }
+      }
+    }
+    
+    // SECOND PRIORITY: General fairness (swap over-assigned with under-assigned)
+    for(const area of SCHED.areas){
+      for(let dayIndex=0;dayIndex<7;dayIndex++){
+        if(!workingDays.includes(dayIndex)) continue;
+        const assigned = schedule[area.id][dayIndex] || [];
+        if(assigned.length === 0) continue;
+        
+        const currentEmp = assigned[assigned.length-1];
+        if(fixedEmployees.has(currentEmp)) continue;
+        const currentEmpAssignments = empAssignments[currentEmp];
+        
+        // Find eligible employees with fewer assignments
+        const betterCandidates = SCHED.employees.filter(emp=>{
+          if(emp.id === currentEmp) return false;
+          if(empAssignments[emp.id] >= currentEmpAssignments) return false;
+          if(!isEligible(emp, area.id, dayIndex, days, workingDays, schedule, fixedEmployees)) return false;
+          return true;
+        });
+        
+        if(betterCandidates.length > 0){
+          betterCandidates.sort((a,b)=>empAssignments[a.id] - empAssignments[b.id]);
+          const swapEmp = betterCandidates[0];
+          
+          const idx = assigned.indexOf(currentEmp);
+          assigned[idx] = swapEmp.id;
+          empAssignments[currentEmp]--;
+          empAssignments[swapEmp.id]++;
+          improved = true;
+        }
+      }
+    }
+    return improved;
+  }
+
+  function fillHolesPass(schedule, workingDays, days, fixedEmployees, empAssignments){
+    for(const area of SCHED.areas){
+      for(let dayIndex=0;dayIndex<7;dayIndex++){
+        if(!workingDays.includes(dayIndex)) continue;
+
+        schedule[area.id][dayIndex] = schedule[area.id][dayIndex] || [];
+        const slot = schedule[area.id][dayIndex];
+        const needed = area.max - slot.length;
+        if(needed <= 0) continue;
+
+        const candidates = SCHED.employees
+          .filter(emp=>isEligible(emp, area.id, dayIndex, days, workingDays, schedule, fixedEmployees))
+          .sort((a,b)=>{
+            const aCount = empAssignments[a.id] || 0;
+            const bCount = empAssignments[b.id] || 0;
+            if(aCount !== bCount) return aCount - bCount;
+            return b.quals.length - a.quals.length;
+          });
+
+        for(const emp of candidates){
+          if(slot.length >= area.max) break;
+          if(slot.includes(emp.id)) continue;
+          slot.push(emp.id);
+          empAssignments[emp.id] = (empAssignments[emp.id] || 0) + 1;
+        }
+      }
+    }
+  }
+
+  // Scheduling engine: exhaustive backtracking with 5-pass optimization
+  function generateWeek(startDate, workingDays=[0,1,2,3,4]){
+    const start = getWeekStart(startDate);
+    const days = Array.from({length:7},(_,i)=>addDays(start,i));
+    const fixedEmployees = new Set();
+    let bestSchedule = null;
+    let bestScore = Infinity;
+    
+    // Run multiple complete scheduling attempts to find best solution
+    for(let attempt=0;attempt<3;attempt++){
+      const schedule = {};
+      const empAssignments = {};
+      SCHED.employees.forEach(e=>empAssignments[e.id]=0);
+      
+      // Initialize schedule
+      SCHED.areas.forEach(area=>{ schedule[area.id]=Array(7).fill(null); });
+      
+      // Place fixed employees on all working days
+      SCHED.employees.forEach(emp=>{
+        if(emp.fixed){
+          const fixedRaw = String(emp.fixed).trim();
+          if(!fixedRaw) return;
+          const areaObj = SCHED.areas.find(a=>a.id===fixedRaw) || SCHED.areas.find(a=>a.id.toLowerCase()===fixedRaw.toLowerCase());
+          if(!areaObj) return;
+          const area = areaObj.id;
+          fixedEmployees.add(emp.id);
+          for(let i=0;i<7;i++){
+            if(!workingDays.includes(i)) continue;
+            schedule[area][i]=schedule[area][i]||[];
+            if(!schedule[area][i].includes(emp.id)){
+              schedule[area][i].push(emp.id);
+              empAssignments[emp.id]++;
+            }
+          }
+        }
+      });
+      
+      // Use backtracking to exhaustively fill remaining slots
+      backtrackFill(0, 0, schedule, workingDays, days, fixedEmployees, empAssignments);
+      
+      // Run 5 optimization passes to refine schedule
+      for(let pass=0;pass<5;pass++){
+        optimizationPass(schedule, workingDays, days, fixedEmployees, empAssignments);
+      }
+
+      // Final pass: greedily fill any remaining open slots
+      fillHolesPass(schedule, workingDays, days, fixedEmployees, empAssignments);
+      
+      // Evaluate this schedule
+      const score = calculateScheduleQuality(schedule, empAssignments, workingDays, days, fixedEmployees);
+      if(score < bestScore){
+        bestScore = score;
+        bestSchedule = {schedule, empAssignments: {...empAssignments}};
+      }
+    }
+    
+    const schedule = bestSchedule.schedule;
+    const empAssignments = bestSchedule.empAssignments;
+
+    // Produce flags for unfillable areas
+    const flags = {};
+    for(const area of SCHED.areas){
+      flags[area.id] = Array(7).fill(false);
+      for(let i=0;i<7;i++){
+        const assigned = schedule[area.id][i] ? schedule[area.id][i].length : 0;
+        if(assigned < area.max && workingDays.includes(i)){
+          // Check if ANY eligible employee exists for this slot
+          const eligible = SCHED.employees.filter(emp=>isEligible(emp, area.id, i, days, workingDays, schedule, fixedEmployees));
+          if(eligible.length === 0) flags[area.id][i]=true;
+        }
+      }
+    }
+
+    const week = {start,days,schedule,flags,workingDays,shiftTimes:{}};
+    ensureWeekShiftTimes(week);
+    return week;
+  }
+
+  // Helper: Check if all areas are fully staffed for a given day
+  function areAllAreasFilled(schedule, dayIndex){
+    for(const area of SCHED.areas){
+      const assigned = schedule[area.id][dayIndex] ? schedule[area.id][dayIndex].length : 0;
+      if(assigned < area.max) return false;
+    }
+    return true;
+  }
+
+  // Helper: Get employees off or on vacation for a given day
+  function getEmployeesOffOrOnVacation(dayIndex, days){
+    // Defensive check: ensure dayIndex is valid
+    if(!days || dayIndex < 0 || dayIndex >= days.length) return [];
+    
+    const today = days[dayIndex];
+    if(!today) return []; // Additional safety check
+    
+    const todayStr = formatDate(today);
+    const offEmployees = [];
+    
+    for(const emp of SCHED.employees){
+      // Check if day off
+      if(isEmployeeOff(emp, today, todayStr)){
+        offEmployees.push({name: emp.name, reason: 'Scheduled off'});
+      }
+      // Check if on vacation
+      else if(emp.vacation.includes(todayStr)){
+        offEmployees.push({name: emp.name, reason: 'Vacation'});
+      }
+    }
+    
+    return offEmployees;
+  }
+
+  // KPI calc - enhanced version
+  function calculateKPIs(week, dayIndex){
+    const {days,schedule} = week;
+    if(dayIndex === undefined) dayIndex = Math.floor((new Date() - week.start)/(24*3600*1000));
+    
+    // Defensive check: ensure dayIndex is within valid range
+    if(dayIndex < 0 || dayIndex >= 7) dayIndex = 0;
+    
+    let emps=new Set();
+    for(const area of SCHED.areas){
+      for(let i=0;i<days.length;i++){
+        const arr = schedule[area.id][i]||[];
+        arr.forEach(id=>emps.add(id));
+      }
+    }
+    
+    // Check if all areas filled for today
+    const allFilled = areAllAreasFilled(schedule, dayIndex);
+    
+    // Get employees off or on vacation
+    const offEmployees = getEmployeesOffOrOnVacation(dayIndex, days);
+    
+    return {
+      allAreasFilled: allFilled,
+      employeesScheduled: emps.size,
+      employeesOff: offEmployees
+    };
+  }
+
+  // Manual swap state
+  const swapState = {
+    'this-week': {active:false, selected:[]},
+    'next-week': {active:false, selected:[]}
+  };
+
+  function getWeekKeyFromContainer(container){
+    return container && container.id==='next-week-panel' ? 'next-week' : 'this-week';
+  }
+
+  function getWeekByKey(weekKey){
+    return weekKey==='next-week' ? lastNextWeek : lastThisWeek;
+  }
+
+  function clearSwapSelection(weekKey){
+    const state = swapState[weekKey];
+    state.selected.forEach(sel=>{ if(sel.el) sel.el.classList.remove('swap-selected'); });
+    state.selected = [];
+  }
+
+  function canPlaceEmployee(week, empId, targetAreaId, targetDayIndex, ignoreSlot){
+    const emp = SCHED.employees.find(e=>e.id===empId);
+    if(!emp) return false;
+    if(emp.fixed && emp.fixed!==targetAreaId) return false;
+    const day = week.days[targetDayIndex];
+    const dayStr = formatDate(day);
+    if(isEmployeeOff(emp, day, dayStr) || emp.vacation.includes(dayStr)) return false;
+    if(!emp.quals.includes(targetAreaId)) return false;
+    for(const area of SCHED.areas){
+      const arr = week.schedule[area.id][targetDayIndex] || [];
+      if(arr.includes(empId)){
+        if(ignoreSlot && ignoreSlot.areaId===area.id && ignoreSlot.dayIndex===targetDayIndex) continue;
+        return false;
+      }
+    }
+    return true;
+  }
+
+  function attemptSwap(weekKey, a, b, container){
+    const week = getWeekByKey(weekKey);
+    if(!week) return;
+    if(a.empId===b.empId && a.areaId===b.areaId && a.dayIndex===b.dayIndex) return;
+
+    const arrA = week.schedule[a.areaId][a.dayIndex] || [];
+    const arrB = week.schedule[b.areaId][b.dayIndex] || [];
+    const idxA = arrA.indexOf(a.empId);
+    const idxB = arrB.indexOf(b.empId);
+    if(idxA<0 || idxB<0) return;
+
+    const state = swapState[weekKey];
+    const overrideRules = state && state.active;
+    if(!overrideRules){
+      const okA = canPlaceEmployee(week, a.empId, b.areaId, b.dayIndex, a);
+      const okB = canPlaceEmployee(week, b.empId, a.areaId, a.dayIndex, b);
+      if(!okA || !okB){
+        alert('Swap not allowed: qualification, availability, or double-booking would be violated.');
+        return;
+      }
+    }
+
+    arrA[idxA] = b.empId;
+    arrB[idxB] = a.empId;
+    ensureWeekShiftTimes(week);
+    saveSchedules();
+    renderScheduleInto(container, week);
+    updateHomeOverview();
+  }
+
+  function removeSelectedAssignments(weekKey, container){
+    const week = getWeekByKey(weekKey);
+    const state = swapState[weekKey];
+    if(!week || !state) return;
+    if(!state.active){
+      alert('Turn on Manual Swap mode first, then select employee(s) to remove.');
+      return;
+    }
+    if(state.selected.length===0){
+      alert('Select employee(s) in the schedule first.');
+      return;
+    }
+
+    ensureWeekShiftTimes(week);
+    let removed = 0;
+
+    state.selected.forEach(sel=>{
+      const slot = week.schedule[sel.areaId] && week.schedule[sel.areaId][sel.dayIndex];
+      if(!slot) return;
+      const idx = slot.indexOf(sel.empId);
+      if(idx===-1) return;
+      slot.splice(idx,1);
+      if(week.shiftTimes && week.shiftTimes[sel.areaId] && week.shiftTimes[sel.areaId][sel.dayIndex]){
+        delete week.shiftTimes[sel.areaId][sel.dayIndex][sel.empId];
+      }
+      removed++;
+    });
+
+    clearSwapSelection(weekKey);
+    if(removed===0) return;
+    saveSchedules();
+    renderScheduleInto(container, week);
+    updateHomeOverview();
+  }
+
+  function editShiftTime(container, areaId, dayIndex, empId){
+    const weekKey = getWeekKeyFromContainer(container);
+    const week = getWeekByKey(weekKey);
+    if(!week) return;
+    ensureWeekShiftTimes(week);
+    const current = getAssignmentShiftTime(week, areaId, dayIndex, empId);
+    const updated = prompt('Edit shift time (example: 1:30 PM - 11:30 PM):', current);
+    if(updated===null) return;
+    const value = updated.trim();
+    if(!value) return;
+    week.shiftTimes[areaId][dayIndex][empId] = value;
+    saveSchedules();
+    renderScheduleInto(container, week);
+  }
+
+  function renderEmployeeScheduleInto(container, week){
+    if(!container) return;
+    if(!week || !week.schedule){
+      container.innerHTML = '<div class="employee-schedule-empty">Generate a schedule to view employee day/time summary.</div>';
+      return;
+    }
+
+    ensureWeekShiftTimes(week);
+    const {days,schedule,workingDays} = week;
+    const byEmployee = {};
+
+    for(let dayIndex=0;dayIndex<days.length;dayIndex++){
+      if(!workingDays.includes(dayIndex)) continue;
+      const dayLabel = days[dayIndex].toDateString().slice(0,3);
+
+      for(const area of SCHED.areas){
+        const assigned = schedule[area.id][dayIndex] || [];
+        assigned.forEach(empId=>{
+          const employee = SCHED.employees.find(e=>e.id===empId);
+          if(!employee) return;
+          if(!byEmployee[empId]) byEmployee[empId] = {name: employee.name, entries:{}};
+          if(byEmployee[empId].entries[dayIndex]) return;
+
+          const shift = getAssignmentShiftTime(week, area.id, dayIndex, empId);
+          const range = parseShiftRange(shift);
+          byEmployee[empId].entries[dayIndex] = {dayLabel, start: range.start, end: range.end};
+        });
+      }
+    }
+
+    const rows = Object.values(byEmployee)
+      .map(emp=>{
+        const dayCells = Array.from({length:7}, (_,i)=>{
+          const entry = emp.entries[i];
+          return entry ? `${entry.start} - ${entry.end}` : 'off';
+        });
+        return {name: emp.name, dayCells};
+      })
+      .sort((a,b)=>a.name.localeCompare(b.name));
+
+    const dayHeaders = days.map(d=>d.toDateString().slice(0,3));
+
+    let html = '<div class="employee-schedule-title">Employee Shift Summary</div>';
+    if(rows.length===0){
+      html += '<div class="employee-schedule-empty">No assigned employees for selected working days.</div>';
+      container.innerHTML = html;
+      return;
+    }
+
+    html += `<table class="employee-schedule"><thead><tr><th>Employee</th>${dayHeaders.map(h=>`<th>${h}</th>`).join('')}</tr></thead><tbody>`;
+    rows.forEach(r=>{
+      html += `<tr><td>${r.name}</td>${r.dayCells.map(c=>`<td>${c}</td>`).join('')}</tr>`;
+    });
+    html += '</tbody></table>';
+    container.innerHTML = html;
+  }
+
+  function handleEmployeeClick(el, container){
+    const weekKey = getWeekKeyFromContainer(container);
+    const state = swapState[weekKey];
+    const empId = Number(el.dataset.emp);
+    const areaId = el.dataset.area;
+    const dayIndex = Number(el.dataset.day);
+
+    if(!state.active){
+      openEmployeeModal(empId);
+      return;
+    }
+
+    const existingIdx = state.selected.findIndex(s=>s.empId===empId && s.areaId===areaId && s.dayIndex===dayIndex);
+    if(existingIdx>=0){
+      state.selected[existingIdx].el.classList.remove('swap-selected');
+      state.selected.splice(existingIdx,1);
+      return;
+    }
+
+    el.classList.add('swap-selected');
+    state.selected.push({empId, areaId, dayIndex, el});
+
+    if(state.selected.length===2){
+      const [a,b] = state.selected;
+      attemptSwap(weekKey, a, b, container);
+      clearSwapSelection(weekKey);
+    }
+  }
+
+  // Rendering
+  function renderScheduleInto(container, week){
+    ensureWeekShiftTimes(week);
+    const {days,schedule,flags,workingDays} = week;
+    const table = document.createElement('table'); table.className='schedule';
+    const thead = document.createElement('thead');
+    const headRow = document.createElement('tr'); headRow.appendChild(document.createElement('th')).textContent='Area';
+    days.forEach(d=>{ const th=document.createElement('th'); th.textContent = d.toDateString().slice(0,10); headRow.appendChild(th); });
+    thead.appendChild(headRow); table.appendChild(thead);
+    const tbody = document.createElement('tbody');
+
+    for(const area of SCHED.areas){
+      const tr=document.createElement('tr');
+      const th=document.createElement('th'); th.textContent=area.id; tr.appendChild(th);
+      for(let i=0;i<days.length;i++){
+        const td=document.createElement('td');
+        // show OFF for non-working days
+        if(!workingDays.includes(i)){
+          td.textContent='OFF';
+          td.style.opacity='0.5';
+          td.style.fontStyle='italic';
+        } else {
+          const arr = schedule[area.id][i]||[];
+          if(arr.length>0){
+            // show names (join)
+            td.innerHTML = arr.map(id=>{ 
+              const e=SCHED.employees.find(x=>x.id===id);
+              const shift = getAssignmentShiftTime(week, area.id, i, id);
+              return `<div class="cell-emp" data-emp="${id}" data-area="${area.id}" data-day="${i}"><div class="cell-emp-name">${e?e.name:'#'+id}</div><div class="cell-shift-time" data-emp="${id}" data-area="${area.id}" data-day="${i}">${shift}</div></div>`;
+            }).join('<br>');
+          } else {
+            td.textContent='-';
+          }
+          if(area.id==='Floor') td.classList.add('cell-floor');
+          // fixed style if any occupant has fixed==area
+          const fixedHere = arr.some(id=>{ const e=SCHED.employees.find(x=>x.id===id); return e && e.fixed===area.id; });
+          if(fixedHere) td.classList.add('cell-fixed');
+          if(flags && flags[area.id] && flags[area.id][i]) td.classList.add('cell-alert');
+        }
+        tr.appendChild(td);
+      }
+      tbody.appendChild(tr);
+    }
+    table.appendChild(tbody);
+    container.innerHTML=''; container.appendChild(table);
+
+    // attach click handlers for employees and shift time editing
+    container.querySelectorAll('.cell-emp-name').forEach(el=>el.addEventListener('click',e=>{
+      const wrapper = e.currentTarget.closest('.cell-emp');
+      if(wrapper) handleEmployeeClick(wrapper, container);
+    }));
+    container.querySelectorAll('.cell-shift-time').forEach(el=>el.addEventListener('click',e=>{
+      e.stopPropagation();
+      const empId = Number(e.currentTarget.dataset.emp);
+      const areaId = e.currentTarget.dataset.area;
+      const dayIndex = Number(e.currentTarget.dataset.day);
+      editShiftTime(container, areaId, dayIndex, empId);
+    }));
+
+    const weekKey = getWeekKeyFromContainer(container);
+    const employeeScheduleContainer = document.getElementById(`${weekKey}-employee-schedule`);
+    renderEmployeeScheduleInto(employeeScheduleContainer, week);
+  }
+
+  // Export CSV
+  function exportWeekCSV(week){
+    const {days,schedule} = week;
+    const rows=[];
+    const header=['Area',...days.map(d=>formatDate(d))]; rows.push(header.join(','));
+    for(const area of SCHED.areas){
+      const row = [area.id];
+      for(let i=0;i<days.length;i++){
+        const arr = schedule[area.id][i]||[];
+        const names = arr.map(id=>{ 
+          const e=SCHED.employees.find(x=>x.id===id);
+          const shift = getAssignmentShiftTime(week, area.id, i, id);
+          return `${e?e.name:'#'+id} (${shift})`;
+        }).join(' | ');
+        row.push('"'+names+'"');
+      }
+      rows.push(row.join(','));
+    }
+    const blob = new Blob([rows.join('\n')],{type:'text/csv'});
+    const url = URL.createObjectURL(blob);
+    const a=document.createElement('a'); a.href=url; a.download='schedule_'+formatDate(week.start)+'.csv'; a.click(); URL.revokeObjectURL(url);
+  }
+
+  function printWeekSchedule(which){
+    const weekKey = which==='next-week' ? 'next-week' : 'this-week';
+    const weekTitle = weekKey==='next-week' ? 'Next Week Schedule' : 'This Week Schedule';
+    const weekPanel = document.getElementById(`${weekKey}-panel`);
+    const employeePanel = document.getElementById(`${weekKey}-employee-schedule`);
+    const week = weekKey==='next-week' ? lastNextWeek : lastThisWeek;
+
+    if(!week || !weekPanel || !weekPanel.innerHTML.trim()){
+      alert('Generate that week first');
+      return;
+    }
+
+    const styleTag = document.querySelector('style');
+    const styleText = styleTag ? styleTag.innerHTML : '';
+
+    const printWindow = window.open('', '_blank', 'width=1200,height=900');
+    if(!printWindow) return;
+
+    printWindow.document.write(`
+      <!doctype html>
+      <html>
+      <head>
+        <meta charset="utf-8">
+        <title>${weekTitle}</title>
+        <style>${styleText}</style>
+        <style>
+          body{background:#fff !important; color:#111827 !important; padding:20px}
+          .print-wrap{max-width:1200px;margin:0 auto}
+          .print-title{font-size:28px;font-weight:800;margin:0 0 8px 0;color:#111827}
+          .print-date{font-size:13px;color:#64748b;margin:0 0 20px 0}
+          .schedule-container,.glass-panel{overflow:visible !important; box-shadow:none !important}
+          @media print{
+            @page{size:landscape;margin:12mm}
+            *{-webkit-print-color-adjust:exact; print-color-adjust:exact}
+          }
+        </style>
+      </head>
+      <body>
+        <div class="print-wrap">
+          <h1 class="print-title">${weekTitle}</h1>
+          <p class="print-date">Week of ${week && week.start ? formatDate(week.start) : ''}</p>
+          <div class="glass-panel">${weekPanel.innerHTML}</div>
+          <div class="glass-panel" style="margin-top:18px;">${employeePanel ? employeePanel.innerHTML : ''}</div>
+        </div>
+      </body>
+      </html>
+    `);
+    printWindow.document.close();
+    printWindow.focus();
+    setTimeout(()=>{
+      printWindow.print();
+      printWindow.close();
+    }, 250);
+  }
+
+  // UI wiring & employees modal
+  function showSection(name){ document.querySelectorAll('.section').forEach(s=>s.classList.remove('active')); document.getElementById(name).classList.add('active'); document.querySelectorAll('.sidebar button').forEach(b=>b.classList.toggle('active',b.dataset.section===name)); }
+
+  function formatVacationDisplay(vacation){ if(!vacation || vacation.length===0) return '-'; if(vacation.length===1) return vacation[0]; const sorted=[...vacation].sort(); return `${sorted[0]} to ${sorted[sorted.length-1]}`; }
+
+  function renderEmployeesTable(){ const tbody=document.querySelector('#employees-table tbody'); tbody.innerHTML=''; SCHED.employees.forEach(emp=>{
+    const tr=document.createElement('tr');
+    tr.dataset.empId=emp.id;
+    const qualsHtml = `<td><input type="text" class="inline-edit-quals" data-emp="${emp.id}" value="${emp.quals.join(', ')}" placeholder="e.g. Floor, Button"></td>`;
+    const fixedHtml = `<td><select class="inline-edit-fixed" data-emp="${emp.id}"><option value="">None</option>${SCHED.areas.map(a=>`<option value="${a.id}" ${emp.fixed===a.id?'selected':''}>${a.id}</option>`).join('')}</select></td>`;
+    const daysOffList = (emp.daysOff && emp.daysOff.length)
+      ? emp.daysOff.map(d=>`<span class="days-off-chip">${d}<button type="button" class="days-off-remove" data-emp="${emp.id}" data-date="${d}">x</button></span>`).join('')
+      : '<span class="days-off-empty">None</span>';
+    const daysOffHtml = `<td><input type="date" class="inline-edit-daysoff" data-emp="${emp.id}"><div class="days-off-list">${daysOffList}</div></td>`;
+    const vacationHtml = `<td><input type="text" class="inline-edit-vacation" data-emp="${emp.id}" placeholder="YYYY-MM-DD to YYYY-MM-DD" value="${emp.vacation.length>0 ? emp.vacation[0]+(emp.vacation.length>1?` to ${emp.vacation[emp.vacation.length-1]}`:'') : ''}"></td>`;
+    const actionsHtml = `<td><button data-id="${emp.id}" class="btn-small del">Delete</button></td>`;
+    tr.innerHTML = `<td>${emp.name}</td>${qualsHtml}${fixedHtml}${daysOffHtml}${vacationHtml}${actionsHtml}`;
+    tbody.appendChild(tr);
+  });
+  
+  // inline edit handlers
+  tbody.querySelectorAll('.inline-edit-quals').forEach(el=>el.addEventListener('blur',e=>{
+    const id=Number(e.target.dataset.emp); const emp=SCHED.employees.find(x=>x.id===id); if(emp){ emp.quals=e.target.value.split(',').map(s=>s.trim()).filter(Boolean); saveEmployees(); regenerateAll(); }
+  }));
+  
+  tbody.querySelectorAll('.inline-edit-fixed').forEach(el=>el.addEventListener('change',e=>{
+    const id=Number(e.target.dataset.emp); const emp=SCHED.employees.find(x=>x.id===id); if(emp){ emp.fixed=e.target.value||null; saveEmployees(); regenerateAll(); }
+  }));
+  
+  tbody.querySelectorAll('.inline-edit-daysoff').forEach(el=>el.addEventListener('blur',e=>{
+    const id=Number(e.target.dataset.emp); const emp=SCHED.employees.find(x=>x.id===id); if(emp){ emp.daysOff=e.target.value.split(',').map(s=>Number(s.trim())).filter(n=>!isNaN(n)); saveEmployees(); regenerateAll(); }
+  }));
+  
+  tbody.querySelectorAll('.inline-edit-vacation').forEach(el=>el.addEventListener('blur',e=>{
+    const id=Number(e.target.dataset.emp); const emp=SCHED.employees.find(x=>x.id===id); if(emp){
+      const val=e.target.value.trim(); let dates=[];
+      if(val && val.includes(' to ')){ const [start,end]=val.split(' to ').map(s=>s.trim()); if(start && end){ const d1=new Date(start); const d2=new Date(end); for(let d=new Date(d1);d<=d2;d.setDate(d.getDate()+1)) dates.push(formatDate(new Date(d))); } }
+      else if(val) dates=[val];
+      emp.vacation=dates; saveEmployees(); regenerateAll();
+    }
+  }));
+  
+  tbody.querySelectorAll('.del').forEach(b=>b.addEventListener('click',e=>{ const id=Number(e.currentTarget.dataset.id); SCHED.employees=SCHED.employees.filter(x=>x.id!==id); saveEmployees(); renderEmployeesTable(); regenerateAll(); })); }
+
+  function openEmployeeModal(id){ const modal=document.getElementById('modal'); const form=modal.querySelector('form'); modal.classList.remove('hidden');
+    const emp = SCHED.employees.find(x=>x.id===id) || {id:null,name:'',quals:[],fixed:'',daysOff:[],vacation:[]};
+    form.id.value = emp.id||''; form.name.value = emp.name||''; form.quals.value = (emp.quals||[]).join(','); form.fixed.value = emp.fixed||''; form.daysOff.value = (emp.daysOff||[]).join(','); form.vacation.value = (emp.vacation||[]).join(',');
+  }
+  function closeEmployeeModal(){ document.getElementById('modal').classList.add('hidden'); }
+
+  document.getElementById('modal-form').addEventListener('submit',e=>{
+    e.preventDefault(); const f=e.target; const id = f.id.value?Number(f.id.value):null; const name=f.name.value.trim(); const quals = f.quals.value.split(',').map(s=>s.trim()).filter(Boolean); const fixed = f.fixed.value.trim()||null; const daysOff = f.daysOff.value.split(',').map(s=>s.trim()).filter(Boolean); const vacation = f.vacation.value.split(',').map(s=>s.trim()).filter(Boolean);
+    if(id){ const emp = SCHED.employees.find(x=>x.id===id); if(emp){ emp.name=name; emp.quals=quals; emp.fixed=fixed; emp.daysOff=daysOff; emp.vacation=vacation; } }
+    else { const nid = (SCHED.employees.reduce((m,x)=>Math.max(m,x.id),0)||0)+1; SCHED.employees.push({id:nid,name,quals,fixed,daysOff,vacation}); }
+    saveEmployees(); renderEmployeesTable(); closeEmployeeModal(); regenerateAll();
+  });
+  document.getElementById('cancel-modal').addEventListener('click',e=>closeEmployeeModal());
+
+  // nav
+  document.querySelectorAll('.sidebar button').forEach(b=>b.addEventListener('click',e=>showSection(b.dataset.section)));
+
+  document.getElementById('add-employee').addEventListener('click',()=>openEmployeeModal(null));
+
+  // generate buttons
+  let lastThisWeek=null,lastNextWeek=null;
+  function getWorkingDays(sectionId){
+    const selector = document.getElementById(sectionId);
+    const days = [];
+    selector.querySelectorAll('input[type="checkbox"]:checked').forEach(cb=>days.push(Number(cb.dataset.day)));
+    return days;
+  }
+  document.getElementById('gen-this-week').addEventListener('click',()=>{
+    const input=document.getElementById('this-week-start'); const date = input.value? new Date(input.value) : new Date(); const workDays = getWorkingDays('this-week-days'); const week = generateWeek(date, workDays); lastThisWeek=week; renderScheduleInto(document.getElementById('this-week-panel'),week); updateHomeOverview();
+  });
+  document.getElementById('gen-next-week').addEventListener('click',()=>{
+    const input=document.getElementById('next-week-start'); let date = input.value? new Date(input.value) : new Date(); const workDays = getWorkingDays('next-week-days'); const week = generateWeek(date, workDays); lastNextWeek=week; renderScheduleInto(document.getElementById('next-week-panel'),week); updateHomeOverview();
+  });
+
+  function toggleSwapMode(weekKey, button, container){
+    const state = swapState[weekKey];
+    state.active = !state.active;
+    button.textContent = state.active ? 'Swapping: On' : 'Manual Swap';
+    button.classList.toggle('btn-primary', state.active);
+    clearSwapSelection(weekKey);
+    const badge = document.getElementById(`swap-badge-${weekKey}`);
+    if(badge){
+      badge.classList.toggle('hidden', !state.active);
+    }
+    if(state.active){
+      container.dataset.swapMode = 'true';
+    } else {
+      delete container.dataset.swapMode;
+    }
+  }
+
+  document.getElementById('manual-swap-this-week').addEventListener('click',e=>{
+    const container = document.getElementById('this-week-panel');
+    toggleSwapMode('this-week', e.currentTarget, container);
+  });
+
+  document.getElementById('manual-swap-next-week').addEventListener('click',e=>{
+    const container = document.getElementById('next-week-panel');
+    toggleSwapMode('next-week', e.currentTarget, container);
+  });
+
+  document.getElementById('remove-selected-this-week').addEventListener('click',()=>{
+    const container = document.getElementById('this-week-panel');
+    removeSelectedAssignments('this-week', container);
+  });
+
+  document.getElementById('remove-selected-next-week').addEventListener('click',()=>{
+    const container = document.getElementById('next-week-panel');
+    removeSelectedAssignments('next-week', container);
+  });
+
+  // clear buttons
+  document.getElementById('clear-this-week').addEventListener('click',()=>{
+    lastThisWeek=null; document.getElementById('this-week-panel').innerHTML='';
+    renderEmployeeScheduleInto(document.getElementById('this-week-employee-schedule'), null);
+    updateHomeOverview();
+  });
+  document.getElementById('clear-next-week').addEventListener('click',()=>{
+    lastNextWeek=null; document.getElementById('next-week-panel').innerHTML='';
+    renderEmployeeScheduleInto(document.getElementById('next-week-employee-schedule'), null);
+    updateHomeOverview();
+  });
+
+  // export
+  document.querySelectorAll('button.export').forEach(b=>b.addEventListener('click',e=>{
+    const which = e.currentTarget.dataset.export; const week = which==='this-week'? lastThisWeek : lastNextWeek; if(!week){ alert('Generate that week first'); return; } exportWeekCSV(week);
+  }));
+
+  document.querySelectorAll('button[data-print]').forEach(b=>b.addEventListener('click',e=>{
+    printWeekSchedule(e.currentTarget.dataset.print);
+  }));
+
+  function updateHomeOverview(){
+    // use today's date and lastThisWeek if available
+    const today = new Date(); let week = lastThisWeek; if(!week){ week = generateWeek(today); lastThisWeek=week; }
+    // find today's column
+    const dayIndex = Math.floor((today - week.start)/(24*3600*1000));
+    const container=document.getElementById('today-overview');
+    
+    // Section 1: Employees working today and their assignments
+    const employeesWorkingToday = new Set();
+    const empAreaMap = {}; // {empId: [areas]}
+    for(const area of SCHED.areas){
+      const arr = week.schedule[area.id][dayIndex]||[];
+      arr.forEach(empId=>{
+        employeesWorkingToday.add(empId);
+        if(!empAreaMap[empId]) empAreaMap[empId]=[];
+        empAreaMap[empId].push(area.id);
+      });
+    }
+    
+    let html = '<div style="margin-bottom:32px;">';
+    html += '<h3 style="margin:0 0 20px 0; font-size:20px; color:#1e293b; font-weight:600; display:flex; align-items:center; gap:10px;"><span>👥</span>Employees Working Today</h3>';
+    
+    if(employeesWorkingToday.size === 0){
+      html += '<div class="glass-panel empty-state"><div class="empty-state-icon">😎</div><h3>No employees scheduled</h3><p>Take a well-deserved break!</p></div>';
+    } else {
+      html += '<div class="stagger-list">';
+      const sortedEmps = Array.from(employeesWorkingToday).sort((a,b)=>{
+        const nameA = SCHED.employees.find(e=>e.id===a)?.name||'';
+        const nameB = SCHED.employees.find(e=>e.id===b)?.name||'';
+        return nameA.localeCompare(nameB);
+      });
+      sortedEmps.forEach(empId=>{
+        const emp = SCHED.employees.find(e=>e.id===empId);
+        const areas = empAreaMap[empId];
+        const initials = emp.name.split(' ').map(n=>n[0]).join('').substring(0,2).toUpperCase();
+        const areasList = areas.map(a=>`<span class="status-badge" style="background:var(--primary-gradient); color:white; margin-right:6px; margin-bottom:4px; padding:6px 10px;">${a}</span>`).join('');
+        html += `<div class="employee-card interactive-card"><div style="display:flex; align-items:center;"><span class="avatar">${initials}</span><strong style="font-size:15px; flex:1;">${emp.name}</strong><span style="font-size:11px; color:#64748b;">${areas.length} area(s)</span></div><div style="margin-top:10px; display:flex; flex-wrap:wrap;">${areasList}</div></div>`;
+      });
+      html += '</div>';
+    }
+    html += '</div>';
+    
+    // Section 2: Areas and their staffing for today
+    html += '<div class="section-divider"><span>📊 Area Coverage</span></div>';
+    html += '<div style="margin-top:24px;">';
+    const rows=[];
+    for(const area of SCHED.areas){ 
+      const arr = week.schedule[area.id][dayIndex]||[]; 
+      const staffCount = arr.length;
+      const capacity = area.max;
+      const isFull = staffCount >= capacity;
+      const isPartial = staffCount > 0 && !isFull;
+      const isEmpty = staffCount === 0;
+      
+      // Build employee badges
+      const names = arr.map((id,idx)=>{
+        const emp = SCHED.employees.find(e=>e.id===id);
+        const initials = emp?.name.split(' ').map(n=>n[0]).join('').substring(0,2).toUpperCase()||'?';
+        return `<span class="avatar" style="margin-right:4px; margin-bottom:4px; width:28px; height:28px; font-size:11px;">${initials}</span>`;
+      }).join('')||'<span style="color:#94a3b8; font-size:13px;">No coverage</span>'; 
+      
+      // Build capacity gauge
+      let gaugeHtml = '<div class="capacity-gauge">';
+      for(let i=0; i<capacity; i++){
+        gaugeHtml += `<div class="gauge-dot ${i < staffCount ? 'filled' : ''}" data-tooltip="${i < staffCount ? 'Assigned' : 'Open'}"></div>`;
+      }
+      gaugeHtml += '</div>';
+      
+      let badgeClass = 'status-empty';
+      let badgeText = 'UNFILLED';
+      let icon = '❌';
+      if(isFull){ badgeClass='status-filled'; badgeText='FULL'; icon='✅'; }
+      else if(isPartial){ badgeClass='status-partial'; badgeText='PARTIAL'; icon='⚠️'; }
+      
+      const heatClass = isFull ? 'heat-hot' : (isPartial ? 'heat-warm' : (isEmpty ? 'heat-cold' : 'heat-cool'));
+      const badgeHtml = `<span class="status-badge ${badgeClass}">${icon} ${badgeText}</span>`;
+      rows.push(`<div class="area-card interactive-card ${heatClass}" style="border-left-color: ${isFull ? '#10b981' : (isPartial ? '#f59e0b' : '#ef4444')}"><div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;"><strong style="font-size:14px; color:#1e293b;">${area.id}</strong><span style="font-size:12px; color:#64748b; background:rgba(0,0,0,0.05); padding:6px 10px; border-radius:4px; font-weight:600;">${staffCount}/${capacity}</span></div><div style="margin-bottom:10px; display:flex; flex-wrap:wrap;">${names}</div>${gaugeHtml}<div style="margin-top:10px;">${badgeHtml}</div></div>`); 
+    }
+    html += rows.join('');
+    html += '</div>';
+    
+    container.innerHTML = html;
+    
+    // Update KPIs with new format
+    const kpi = calculateKPIs(week, dayIndex);
+    
+    // Set areas filled status
+    const filledEl = document.getElementById('kpi-filled');
+    filledEl.textContent = kpi.allAreasFilled ? '✅ All areas filled' : '⚠️ No short employees';
+    
+    // Set employee short count and rotating display
+    const shortEl = document.getElementById('kpi-short');
+    if(kpi.employeesOff.length === 0){
+      shortEl.textContent = '0 employees off';
+    } else {
+      shortEl.textContent = `${kpi.employeesOff.length} employee(s) off`;
+      
+      // Rotating display after 5 seconds
+      let rotateIndex = 0;
+      setTimeout(()=>{
+        const rotateInterval = setInterval(()=>{
+          if(kpi.employeesOff.length > 0){
+            const emp = kpi.employeesOff[rotateIndex];
+            shortEl.textContent = `${emp.name} - ${emp.reason}`;
+            rotateIndex = (rotateIndex + 1) % kpi.employeesOff.length;
+          }
+        }, 3000); // Change every 3 seconds
+        
+        // Clear the interval after showing all employees (optional: comment out for continuous rotation)
+        // setTimeout(()=>clearInterval(rotateInterval), 3000 * kpi.employeesOff.length);
+      }, 5000); // Start rotating after 5 seconds
+    }
+    
+    // Set employees scheduled
+    document.getElementById('kpi-emps').textContent = kpi.employeesScheduled;
+  }
+
+  // localStorage helpers for selections
+  function saveWeekDates(){ 
+    localStorage.setItem('sched_this_week_start', document.getElementById('this-week-start').value);
+    localStorage.setItem('sched_next_week_start', document.getElementById('next-week-start').value);
+  }
+  function loadWeekDates(){
+    const thisWeek = localStorage.getItem('sched_this_week_start');
+    const nextWeek = localStorage.getItem('sched_next_week_start');
+    if(thisWeek) document.getElementById('this-week-start').value = thisWeek;
+    if(nextWeek) document.getElementById('next-week-start').value = nextWeek;
+  }
+
+  function regenerateAll(){ // re-run both panels if dates exist
+    if(document.getElementById('this-week-start').value){ const workDays = getWorkingDays('this-week-days'); const w=generateWeek(new Date(document.getElementById('this-week-start').value), workDays); lastThisWeek=w; renderScheduleInto(document.getElementById('this-week-panel'),w); }
+    if(document.getElementById('next-week-start').value){ const workDays = getWorkingDays('next-week-days'); const w2=generateWeek(new Date(document.getElementById('next-week-start').value), workDays); lastNextWeek=w2; renderScheduleInto(document.getElementById('next-week-panel'),w2); }
+    updateHomeOverview();
+    saveWeekDates(); // Save dates after regenerating
+    saveSchedules(); // Save schedules
+  }
+
+  // initial render & restore state
+  loadEmployees();
+  renderEmployeesTable();
+  loadSchedules(); // Load saved schedules
+  // set default week start to this Monday
+  document.getElementById('this-week-start').value = formatDate(getWeekStart(new Date()));
+  const nw = addDays(getWeekStart(new Date()),7); document.getElementById('next-week-start').value = formatDate(nw);
+  // restore dates and working days
+  loadWeekDates(); // Restore saved dates
+  function restoreWorkingDays(section){ const saved=loadWorkingDays(section); if(saved){ document.querySelectorAll(`#${section} input[type="checkbox"]`).forEach(cb=>cb.checked=saved.includes(Number(cb.dataset.day))); } }
+  restoreWorkingDays('this-week-days'); restoreWorkingDays('next-week-days');
+  
+  // Save dates when they change
+  document.getElementById('this-week-start').addEventListener('change', saveWeekDates);
+  document.getElementById('next-week-start').addEventListener('change', saveWeekDates);
+  
+  // auto-regenerate when working days change
+  document.querySelectorAll('#this-week-days input[type="checkbox"], #next-week-days input[type="checkbox"]').forEach(cb=>cb.addEventListener('change',e=>{
+    const section = e.target.closest('[id$="-days"]').id;
+    const days = Array.from(document.querySelectorAll(`#${section} input[type="checkbox"]:checked`)).map(c=>Number(c.dataset.day));
+    saveWorkingDays(section, days);
+    regenerateAll();
+  }));
+  
+  // Render saved schedules if they exist, otherwise auto-generate this week
+  if(lastThisWeek && lastThisWeek.schedule){
+    renderScheduleInto(document.getElementById('this-week-panel'), lastThisWeek);
+    updateHomeOverview();
+  } else {
+    document.getElementById('gen-this-week').click();
+  }
+  
+  if(lastNextWeek && lastNextWeek.schedule){
+    renderScheduleInto(document.getElementById('next-week-panel'), lastNextWeek);
+  }
+
+  if(!lastThisWeek) renderEmployeeScheduleInto(document.getElementById('this-week-employee-schedule'), null);
+  if(!lastNextWeek) renderEmployeeScheduleInto(document.getElementById('next-week-employee-schedule'), null);
+  </script>
+</body>
+</html>
+
+  // Render saved schedules if they exist, otherwise auto-generate this week
+  if(lastThisWeek && lastThisWeek.schedule){
+    renderScheduleInto(document.getElementById('this-week-panel'), lastThisWeek);
+    updateHomeOverview();
+  } else {
+    document.getElementById('gen-this-week').click();
+  }
+  
+  if(lastNextWeek && lastNextWeek.schedule){
+    renderScheduleInto(document.getElementById('next-week-panel'), lastNextWeek);
+  }
+  </script>
+</body>
+</html>
+
+</html>
+
